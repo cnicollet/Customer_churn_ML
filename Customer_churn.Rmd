@@ -14,7 +14,7 @@ data(churn)
 ```{r}
 prop.table(table(churnTrain$churn))
 ```
-Notice that just 14% of custumers will churn.
+Note that just 14% of custumers will churn.
 
 ####  Create train test indices for cross-validation
 ```{r}
@@ -29,7 +29,7 @@ table(churnTrain$churn[i])
 ```
 
 ####  Create myControl
-  . to have exact same cross validation folds for each model. THis allow us to compare these model and make a fair comparison.
+  To have exact same cross validation folds for each model. THis allow us to compare these model and make a fair comparison.
 ```{r warning=FALSE, message=FALSE}
 myControl <- trainControl(summaryFunction = twoClassSummary,
                           classProbs = T,
@@ -61,7 +61,7 @@ model_glmnet$results %>%
 #library(Metrics)
 #auc(actual = ifelse(churnTest$churn == "yes", 1, 0), predicted = glmnet_pred[, "yes"])
 ```
-  Notice that alpha = 0 and lambda = 0.2106053 give the best result "ROC" = .7686188.
+  Note that alpha = 0 and lambda = 0.2106053 give the best result "ROC" = .7686188.
 
 2.  glm model
 ```{r warning=FALSE, message=FALSE}
