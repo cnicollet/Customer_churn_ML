@@ -1,0 +1,145 @@
+---
+title: "Costumer_churn"
+output: pdf_document
+---
+
+Loading libraries.
+```{r warning=FALSE, message=FALSE}
+library(caret)
+library(C50)
+library(dplyr)
+data(churn)
+```
+
+```{r}
+prop.table(table(churnTrain$churn))
+```
+Notice that just 14% of custumers will churn.
+
+####  Create train test indices for cross-validation
+```{r}
+set.seed(42)
+myFolds <- createFolds(churnTrain$churn, k = 5)
+```
+
+####  Compare class distribution
+```{r}
+i <- myFolds$Fold1
+table(churnTrain$churn[i])
+```
+
+####  Create myControl
+  . to have exact same cross validation folds for each model. THis allow us to compare these model and make a fair comparison.
+```{r warning=FALSE, message=FALSE}
+myControl <- trainControl(summaryFunction = twoClassSummary,
+                          classProbs = T,
+                          verboseIter = F,
+                          savePredictions = T,
+                          index = myFolds)
+```
+
+#### Fit the models
+1.  glmnet model
+```{r warning=FALSE, message=FALSE}
+set.seed(42)
+model_glmnet <- train(churn ~ ., 
+                      data = churnTrain,
+                      metric = "ROC",
+                      method = "glmnet",
+                      tuneGrid = expand.grid(
+                        alpha = 0:1,
+                        lambda = seq(.0001, 1, length = 20)
+                        ),
+                      trControl = myControl
+                      )
+# Find the best ROC value
+model_glmnet$results %>%
+  filter(ROC == max(ROC))
+
+#glmnet_pred <- predict(model_glmnet, newdata = churnTest)
+#confusionMatrix(glmnet_pred, churnTest$churn)
+#library(Metrics)
+#auc(actual = ifelse(churnTest$churn == "yes", 1, 0), predicted = glmnet_pred[, "yes"])
+```
+  Notice that alpha = 0 and lambda = 0.2106053 give the best result "ROC" = .7686188.
+
+2.  glm model
+```{r warning=FALSE, message=FALSE}
+set.seed(42)
+model_glm <- train(churn ~ ., 
+                   data = churnTrain,
+                   method = "glm",
+                   metric = "ROC",
+                   trControl = myControl)
+
+model_glm$results
+
+#glm_pred <-  predict(object = model_glmnet, newdata = churnTest)
+#confusionMatrix(glm_pred, churnTest$churn)
+
+#library(caTools)
+#colAUC(glm_pred, churnTest$churn, plotROC = T)
+
+```
+3.  Random Forest
+  RF is slower to fit than glmnet but often(not always) more accurate than glmnet, aesier to tune, captures threshold effect and variable interactions systematically.
+```{r warning=FALSE, message=FALSE}
+set.seed(42)
+model_rf <- train(churn ~ ., 
+                  data = churnTrain,
+                  method = "ranger",
+                  metric = "ROC",
+                  tuneGrid = expand.grid(mtry = seq(4, ncol(churnTrain) * 0.8, 2),
+                                         splitrule = "gini"),
+                  trControl = myControl)
+
+#library(dplyr)
+model_rf$results %>%
+  filter(ROC == max(ROC))
+
+#rf_pred <- predict(object = model_rf, newdata = churnTest)
+#confusionMatrix(rf_pred, churnTest$churn)
+```
+
+4.  Gradient Boosting
+```{r warning=FALSE, message=FALSE}
+set.seed(42)
+model_xgb <- train(churn ~ ., 
+                   data = churnTrain,
+                   method = "xgbTree",
+                   metric = "ROC",
+                   tuneGrid = expand.grid(eta = .01,
+                                          gamma = 0,
+                                          max_depth = c(5, 10),
+                                          colsample_bytree = 1,
+                                          min_child_weight = 1,
+                                          subsample = .75,
+                                          nrounds = seq(100, 200, 50)),
+                   trControl = myControl
+                   )
+
+ model_xgb$results %>%
+  filter(ROC == max(ROC))
+```
+
+# Comparing models
+###Make sure they were fit on the same data
+Selection criteria
+    .Highest average AUC
+    .Lowest standard deviation AUC
+A.  Make a list of models
+```{r warning=FALSE, message=FALSE}
+model_list <- list(glmnet = model_glmnet,
+                   rf = model_rf, 
+                   xgb = model_xgb,
+                   glm = model_glm
+                  )
+    
+#Collect resamples from the cv folds
+set.seed(42)
+resamps <- resamples(model_list)
+resamps
+#Summarize the results
+summary(resamps)
+bwplot(resamps, metric = "ROC")
+```
