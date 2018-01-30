@@ -123,10 +123,10 @@ model_xgb <- train(churn ~ .,
 ```
 
 # Comparing models
-###Make sure they were fit on the same data
-Selection criteria
-    .Highest average AUC
-    .Lowest standard deviation AUC
+  Make sure they were fit on the same data.
+Selection criteria:
+    - Highest average AUC
+    - Lowest standard deviation AUC
 A.  Make a list of models
 ```{r warning=FALSE, message=FALSE}
 model_list <- list(glmnet = model_glmnet,
